@@ -28,6 +28,8 @@ let lastProcessName = '';
 let lastState = '';
 let lastTimestamp = Date.now();
 
+const LOG_RETENTION_DAYS = 30;
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -139,7 +141,7 @@ function flush() {
     }
 
     // Keep only the last 30 days
-    if (existing.length > 30) existing = existing.slice(-30);
+    if (existing.length > LOG_RETENTION_DAYS) existing = existing.slice(-LOG_RETENTION_DAYS);
 
     fs.writeFileSync(logPath, JSON.stringify(existing, null, 2), 'utf8');
   } catch (err) {

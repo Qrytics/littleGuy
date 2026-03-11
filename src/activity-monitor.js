@@ -171,7 +171,8 @@ async function getActiveWindow() {
 
 // ─── State classification ─────────────────────────────────────────────────────
 
-const IDLE_THRESHOLD_SECONDS = 120; // 2 minutes → sleeping
+/** Seconds of system idle time before the character enters the sleeping state. */
+const IDLE_THRESHOLD_SECONDS = 120; // 2 minutes
 
 /**
  * Maps process + window info + idle time to one of:

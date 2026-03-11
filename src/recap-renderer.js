@@ -71,7 +71,7 @@ function renderRecap(data) {
   tbody.innerHTML = apps.map((entry) => {
     const name = entry.processName || '—';
     const title = entry.windowTitle
-      ? `<br><span style="color:#555577;font-size:0.72rem">${escHtml(entry.windowTitle.slice(0, 60))}</span>`
+      ? `<br><span style="color:#555577;font-size:0.72rem">${escHtml(entry.windowTitle.slice(0, MAX_WINDOW_TITLE_LENGTH))}</span>`
       : '';
     return `
       <tr>
@@ -81,6 +81,8 @@ function renderRecap(data) {
       </tr>`;
   }).join('');
 }
+
+const MAX_WINDOW_TITLE_LENGTH = 60;
 
 function escHtml(str) {
   return String(str)
