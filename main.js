@@ -10,12 +10,16 @@ const {
   screen,
   powerMonitor,
   shell,
-  dialog,
 } = require('electron');
 const path = require('path');
 const ActivityMonitor = require('./src/activity-monitor');
 const ActivityLogger  = require('./src/activity-logger');
 const CompanionStore  = require('./src/companion-store');
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Distance in pixels at which two companions greet each other. */
+const BUDDY_INTERACTION_DISTANCE = 200;
 
 // ─── App-level state ──────────────────────────────────────────────────────────
 
@@ -192,17 +196,9 @@ function buildCompanionSubmenu(id, cfg) {
   return [
     {
       label: `Rename "${cfg.name}"…`,
-      click: async () => {
+      click: () => {
         const entry = companions.get(id);
         if (!entry) return;
-        const result = await dialog.showInputBox
-          ? dialog.showInputBox({ title: 'Rename', defaultValue: cfg.name })
-          : { response: 0, checkboxChecked: false };
-
-        // Electron doesn't have showInputBox — use a prompt-style approach
-        // We'll emit IPC to a hidden input window, but the simplest method
-        // is a native dialog with message + buttons.  Here we fallback to
-        // prompting in the renderer via a keyboard-shortcut-free approach:
         promptRename(id, cfg);
       },
     },
@@ -510,7 +506,7 @@ function setupInteractionLoop() {
         const [bx, by] = b.window.getPosition();
         const dist = Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 
-        if (dist < 200) {
+        if (dist < BUDDY_INTERACTION_DISTANCE) {
           a.window.webContents.send('buddy-nearby');
           b.window.webContents.send('buddy-nearby');
         }

@@ -175,7 +175,8 @@ if ($fallback) { Write-Output ($fallback.Name + '|' + $fallback.MainWindowTitle)
       processName: line.slice(0, sep).toLowerCase().trim(),
       windowTitle: line.slice(sep + 1).trim(),
     };
-  } catch {
+  } catch (err) {
+    console.warn('[activity-monitor] Windows window detection failed:', err.message);
     return { processName: '', windowTitle: '' };
   }
 }
