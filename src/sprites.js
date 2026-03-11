@@ -12,6 +12,8 @@
  * To swap in real art assets, replace the frame arrays below with pixel data
  * extracted from your sprite sheets, or override the draw logic in renderer.js
  * to use Image objects instead.
+ *
+ * See CUSTOMIZATION.md for a full guide on creating your own companions.
  */
 
 /* eslint-disable no-multi-spaces */
@@ -42,11 +44,8 @@ const SPRITE_COLORS = [
   '#7CFC00',  // 9 G glow
 ];
 
-// ─── Sprite frames ────────────────────────────────────────────────────────────
-// Each state is an array of frames; each frame is a 16-row × 10-col 2-D array.
-// Row 0 = top of character.
+// ─── Body variants ────────────────────────────────────────────────────────────
 
-// Shared body / legs (re-used across states to reduce duplication)
 const BODY_NORMAL = [
   [_, T, T, T, T, T, T, T, T, _],   //  6
   [S, T, T, T, T, T, T, T, T, S],   //  7 arms out
@@ -84,9 +83,59 @@ const BODY_RELAXED = [               // arms resting (sleeping)
   ...BODY_NORMAL.slice(4),
 ];
 
+const BODY_WAVE_UP = [               // right arm raised — waving
+  [_, T, T, T, T, T, T, T, T, _],
+  [S, T, T, T, T, T, T, T, S, _],  // left arm out, right arm high
+  [_, T, T, T, T, T, T, S, _, _],  // right arm extension
+  [_, T, T, T, T, T, T, T, T, _],
+  ...BODY_NORMAL.slice(4),
+];
+
+const BODY_WAVE_OPEN = [             // right arm raised + hand out
+  [_, T, T, T, T, T, T, T, T, S],  // hand pixel at top right
+  [S, T, T, T, T, T, T, T, S, _],
+  [_, T, T, T, T, T, T, _, _, _],
+  [_, T, T, T, T, T, T, T, T, _],
+  ...BODY_NORMAL.slice(4),
+];
+
+const BODY_STRETCH = [               // arms stretched wide (stretch)
+  [_, T, T, T, T, T, T, T, T, _],
+  [S, T, T, T, T, T, T, T, T, S],
+  [S, T, T, T, T, T, T, T, T, S],  // same as normal but both hands far out
+  [S, T, T, T, T, T, T, T, T, S],
+  ...BODY_NORMAL.slice(4),
+];
+
+// Walking sprites — lean forward slightly by offsetting the leg pixels
+const BODY_WALK_L = [                // step with left foot
+  [_, T, T, T, T, T, T, T, T, _],
+  [S, T, T, T, T, T, T, T, T, _],
+  [_, T, T, T, T, T, T, T, T, S],
+  [_, T, T, T, T, T, T, T, T, _],
+  [_, _, P, P, _, P, P, _, _, _],
+  [_, _, P, P, _, P, P, _, _, _],
+  [_, P, P, _, _, P, P, _, _, _],   // left knee forward
+  [_, P, P, _, _, _, P, P, _, _],
+  [_, B, B, _, _, _, B, B, _, _],
+  [B, B, _, _, _, _, B, B, _, _],   // left foot forward
+];
+
+const BODY_WALK_R = [                // step with right foot
+  [_, T, T, T, T, T, T, T, T, _],
+  [S, T, T, T, T, T, T, T, T, _],
+  [_, T, T, T, T, T, T, T, T, S],
+  [_, T, T, T, T, T, T, T, T, _],
+  [_, _, P, P, _, P, P, _, _, _],
+  [_, _, P, P, _, P, P, _, _, _],
+  [_, _, P, P, _, _, P, P, _, _],   // right knee forward
+  [_, _, P, P, _, P, P, _, _, _],
+  [_, _, B, B, _, _, B, B, _, _],
+  [_, _, B, B, _, B, B, B, _, _],   // right foot forward
+];
+
 // ── Head templates ────────────────────────────────────────────────────────────
 function head(row3) {
-  // row3 controls the eyes row; everything else is fixed
   return [
     [_, _, H, H, H, H, H, _, _, _],  // 0 hair top
     [_, H, H, H, H, H, H, H, _, _],  // 1 hair wide
@@ -101,15 +150,22 @@ const EYES_CLOSED  = [_, H, S, H, S, H, S, H, _, _]; // hair color = squint
 const EYES_WIDE    = [_, H, E, E, S, E, E, H, _, _]; // excited
 const EYES_LOOK_L  = [_, H, S, E, E, S, S, H, _, _]; // eyes shifted left
 const EYES_LOOK_R  = [_, H, S, S, S, E, E, H, _, _]; // eyes shifted right
+const EYES_SQUINT  = [_, H, S, E, S, E, S, H, _, _]; // same as open (slight squint shown via mouth)
 
-const MOUTH_SMILE  = [_, H, S, M, M, M, S, H, _, _]; // 5
-const MOUTH_BIG    = [_, H, M, M, M, M, M, H, _, _]; // 5 excited
-const MOUTH_FOCUS  = [_, H, S, S, M, S, S, H, _, _]; // 5 small
-const MOUTH_NONE   = [_, H, S, S, S, S, S, H, _, _]; // 5 neutral
+const MOUTH_SMILE  = [_, H, S, M, M, M, S, H, _, _]; // happy
+const MOUTH_BIG    = [_, H, M, M, M, M, M, H, _, _]; // excited
+const MOUTH_FOCUS  = [_, H, S, S, M, S, S, H, _, _]; // small neutral
+const MOUTH_NONE   = [_, H, S, S, S, S, S, H, _, _]; // neutral (sleeping)
+const MOUTH_OH     = [_, H, S, M, S, M, S, H, _, _]; // surprise / yawn (O shape)
+const MOUTH_GRIN   = [_, H, M, S, M, S, M, H, _, _]; // wide grin
 
 // ─── State frames ────────────────────────────────────────────────────────────
 
 const SPRITES = {
+
+  // ── Idle sub-animations ──────────────────────────────────────────────────
+  // Each sub-animation plays as a stand-alone sequence within the idle state.
+  // renderer.js cycles through them automatically.
 
   idle: [
     // frame 0 – eyes open, smile
@@ -119,6 +175,107 @@ const SPRITES = {
       ...BODY_NORMAL,
     ],
     // frame 1 – blink
+    [
+      ...head(EYES_CLOSED),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
+
+  // Waving: 4-frame sequence (wave hand up and down)
+  idle_wave: [
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_WAVE_UP,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_WAVE_OPEN,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_WAVE_UP,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
+
+  // Stretching: arms go wide then relax
+  idle_stretch: [
+    [
+      ...head(EYES_CLOSED),
+      MOUTH_OH,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_CLOSED),
+      MOUTH_OH,
+      ...BODY_STRETCH,
+    ],
+    [
+      ...head(EYES_CLOSED),
+      MOUTH_OH,
+      ...BODY_STRETCH,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
+
+  // Looking around: eyes sweep left → right → center
+  idle_look: [
+    [
+      ...head(EYES_LOOK_L),
+      MOUTH_FOCUS,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_LOOK_L),
+      MOUTH_FOCUS,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_LOOK_R),
+      MOUTH_FOCUS,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_LOOK_R),
+      MOUTH_FOCUS,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
+
+  // Excited blink: surprised + big smile
+  idle_excited: [
+    [
+      ...head(EYES_WIDE),
+      MOUTH_GRIN,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_WIDE),
+      MOUTH_GRIN,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
     [
       ...head(EYES_CLOSED),
       MOUTH_SMILE,
@@ -189,6 +346,55 @@ const SPRITES = {
       ...BODY_RELAXED,
     ],
   ],
+
+  // Walking animation — used when walking mode is enabled
+  walking: [
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_WALK_L,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_WALK_R,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
+
+  // Greeting — triggered when another companion is nearby
+  greeting: [
+    [
+      ...head(EYES_WIDE),
+      MOUTH_BIG,
+      ...BODY_WAVE_UP,
+    ],
+    [
+      ...head(EYES_WIDE),
+      MOUTH_BIG,
+      ...BODY_WAVE_OPEN,
+    ],
+    [
+      ...head(EYES_WIDE),
+      MOUTH_BIG,
+      ...BODY_WAVE_UP,
+    ],
+    [
+      ...head(EYES_OPEN),
+      MOUTH_SMILE,
+      ...BODY_NORMAL,
+    ],
+  ],
 };
 
 module.exports = { SPRITE_COLORS, SPRITES };
+
