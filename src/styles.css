@@ -1,0 +1,27 @@
+/* Overlay window — transparent, no frame */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 80px;
+  height: 100px;
+  overflow: hidden;
+  background: transparent;
+  /* Pixelated rendering so the scaled-up canvas looks crisp */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#character {
+  display: block;
+  cursor: grab;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#character:active {
+  cursor: grabbing;
+}
