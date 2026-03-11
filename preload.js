@@ -3,14 +3,16 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // ── Existing ──────────────────────────────────────────────────────────────
+
   /** Receive activity state updates pushed from the main process */
-  onStateChange: (callback) => {
-    ipcRenderer.on('state-change', (_event, payload) => callback(payload));
+  onStateChange: (cb) => {
+    ipcRenderer.on('state-change', (_e, payload) => cb(payload));
   },
 
   /** Receive recap data pushed from the main process */
-  onRecapData: (callback) => {
-    ipcRenderer.on('recap-data', (_event, data) => callback(data));
+  onRecapData: (cb) => {
+    ipcRenderer.on('recap-data', (_e, data) => cb(data));
   },
 
   /** Tell the main process whether the window should pass mouse events through */
@@ -25,4 +27,46 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Request a fresh recap payload from the main process */
   requestRecap: () => ipcRenderer.invoke('request-recap'),
+
+  // ── Companion config / name ───────────────────────────────────────────────
+
+  /** Receive companion config (name, colors) from the main process */
+  onCompanionConfig: (cb) => {
+    ipcRenderer.on('companion-config', (_e, cfg) => cb(cfg));
+  },
+
+  // ── Walking ───────────────────────────────────────────────────────────────
+
+  /** Receive walking-mode updates (walking: bool, direction: ±1) */
+  onWalkingUpdate: (cb) => {
+    ipcRenderer.on('walking-update', (_e, data) => cb(data));
+  },
+
+  // ── Dialogue bubbles ──────────────────────────────────────────────────────
+
+  /** Receive a dialogue line to display as a speech bubble */
+  onDialogue: (cb) => {
+    ipcRenderer.on('dialogue', (_e, data) => cb(data));
+  },
+
+  // ── Buddy interactions ────────────────────────────────────────────────────
+
+  /** Triggered when another companion is within greeting distance */
+  onBuddyNearby: (cb) => {
+    ipcRenderer.on('buddy-nearby', (_e) => cb());
+  },
+
+  // ── Petting ───────────────────────────────────────────────────────────────
+
+  /** Notify main process the companion was pet (click without drag) */
+  petCompanion: () => {
+    ipcRenderer.send('pet-companion');
+  },
+
+  // ── Minigame ──────────────────────────────────────────────────────────────
+
+  /** Ask main process to open the minigame window */
+  openMinigame: () => {
+    ipcRenderer.send('open-minigame');
+  },
 });
