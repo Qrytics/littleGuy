@@ -77,7 +77,7 @@ jobs:
         run: npm ci --prefer-offline
 
       - name: Build installer
-        run: npm run build
+        run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -110,7 +110,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Build AppImage
-        run: npx electron-builder --linux AppImage
+        run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -2,10 +2,13 @@
   "name": "little-guy",
   "version": "1.0.0",
   "description": "Interactive desktop buddy that reacts to your live desktop activity",
+  "author": "Qrytics",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
     "pack": "electron-builder --dir"
   },
   "build": {
@@ -31,10 +34,9 @@
       "target": "AppImage"
     }
   },
-  "dependencies": {
-    "electron": "^35.7.5"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "electron": "^35.7.5",
     "electron-builder": "^26.0.0"
   }
 }
