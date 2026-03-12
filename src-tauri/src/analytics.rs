@@ -45,7 +45,10 @@ pub fn get_recap_data(sqlite_path: &Path) -> Result<RecapData> {
         .to_str()
         .context("sqlite path is not valid UTF-8")?;
 
-    // Query using sqlite_scan — reads directly from the SQLite WAL file
+    // Query using sqlite_scan — reads directly from the SQLite WAL file.
+    // Safety: `sqlite_path_str` is the app's own data-dir path (not user
+    // input); `today` is produced by chrono and contains only [0-9-],
+    // so neither value can introduce SQL injection.
     let query = format!(
         "SELECT process_name, window_title, state, SUM(total_ms) AS total_ms
            FROM sqlite_scan('{sqlite_path_str}', 'activity_sessions')
