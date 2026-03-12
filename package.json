@@ -1,42 +1,36 @@
 {
   "name": "little-guy",
-  "version": "1.0.0",
-  "description": "Interactive desktop buddy that reacts to your live desktop activity",
+  "version": "2.0.0",
+  "description": "Interactive desktop buddy — Tauri v2 + Rust + React + TypeScript",
   "author": "Qrytics",
-  "main": "main.js",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "pack": "electron-builder --dir"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
+    "check": "tsc --noEmit",
+    "test": "echo \"Tests run via cargo test in src-tauri/\" && exit 0"
   },
-  "build": {
-    "appId": "com.qrytics.littleguy",
-    "productName": "littleGuy",
-    "files": [
-      "main.js",
-      "preload.js",
-      "src/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-autostart": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-shell": "^2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
-  "dependencies": {},
   "devDependencies": {
-    "electron": "^35.7.5",
-    "electron-builder": "^26.0.0"
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8",
+    "@vitejs/plugin-react": "^4.3.1"
   }
 }
