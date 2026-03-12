@@ -423,6 +423,7 @@ if (window.electronAPI) {
 // ─── Mouse interaction ────────────────────────────────────────────────────────
 
 let isDragging  = false;
+let isMouseDown = false;
 let dragStartX  = 0;
 let dragStartY  = 0;
 let clickStartX = 0;
@@ -430,6 +431,7 @@ let clickStartY = 0;
 
 canvas.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
+  isMouseDown = true;
   isDragging  = false;
   dragStartX  = e.screenX;
   dragStartY  = e.screenY;
@@ -438,8 +440,14 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 window.addEventListener('mousemove', (e) => {
-  const movedDist = Math.abs(e.screenX - clickStartX) + Math.abs(e.screenY - clickStartY);
-  if (movedDist > 4) isDragging = true;
+  // Only begin tracking a drag after the mouse button has been pressed.
+  // Without this guard, the initial 0,0 values of clickStartX/Y would
+  // produce a huge movedDist on the very first mousemove, sending the
+  // companion window flying off-screen the moment the user moved their mouse.
+  if (isMouseDown) {
+    const movedDist = Math.abs(e.screenX - clickStartX) + Math.abs(e.screenY - clickStartY);
+    if (movedDist > 4) isDragging = true;
+  }
 
   if (!isDragging) {
     const rect = canvas.getBoundingClientRect();
@@ -461,6 +469,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mouseup', (e) => {
+  isMouseDown = false;
   if (!isDragging && e.button === 0) {
     heartTick = HEART_DURATION;
     if (window.electronAPI) window.electronAPI.petCompanion();

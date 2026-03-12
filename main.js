@@ -102,22 +102,38 @@ function defaultPosition() {
   return { x: width - 120, y: height - 190 };
 }
 
+/**
+ * Clamp (x, y) so the companion window is fully visible on the primary display.
+ * This guards against stale saved positions from removed/resized monitors.
+ */
+function clampToScreen(x, y) {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  return {
+    x: Math.max(0, Math.min(width - 80, x)),
+    y: Math.max(0, Math.min(height - 160, y)),
+  };
+}
+
 function createCompanionWindow(cfg) {
-  const { x, y } = (cfg.x != null && cfg.y != null)
-    ? { x: cfg.x, y: cfg.y }
-    : defaultPosition();
+  let pos;
+  if (cfg.x != null && cfg.y != null) {
+    pos = clampToScreen(cfg.x, cfg.y);
+  } else {
+    pos = defaultPosition();
+  }
 
   const win = new BrowserWindow({
     width: 80,
     height: 160,
-    x,
-    y,
+    x: pos.x,
+    y: pos.y,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    show: false,    // hidden until content is ready, prevents blank-window flash
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -127,6 +143,11 @@ function createCompanionWindow(cfg) {
 
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
   win.setAlwaysOnTop(true, 'screen-saver');
+
+  // Show only once the renderer has painted its first frame
+  win.once('ready-to-show', () => {
+    win.show();
+  });
 
   // When renderer is ready, push initial config
   win.webContents.on('did-finish-load', () => {
@@ -212,6 +233,16 @@ function buildCompanionSubmenu(id, cfg) {
         if (!entry) return;
         const win = entry.window;
         win.isVisible() ? win.hide() : win.show();
+      },
+    },
+    {
+      label: 'Reset position',
+      click: () => {
+        const entry = companions.get(id);
+        if (!entry) return;
+        const { x, y } = defaultPosition();
+        entry.window.setPosition(x, y);
+        CompanionStore.updateCompanion(id, { x, y });
       },
     },
     {
