@@ -59,15 +59,30 @@ pub fn run() {
             // ---------------------------------------------------------------
             let db_path = data_dir(&handle);
             let sqlite_path = db_path.join("activity.db");
+            let companion_path = db_path.join("companions.db");
 
             {
                 let state: tauri::State<AppState> = handle.state();
-                let conn = state.sqlite_conn.lock().unwrap();
+
+                // Open the real on-disk connection and replace the temporary
+                // in-memory placeholder created before the AppHandle existed.
+                let real_conn = rusqlite::Connection::open(&companion_path)
+                    .expect("open companion DB");
+                real_conn
+                    .execute_batch(
+                        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+                    )
+                    .expect("companion DB WAL mode");
+
+                if let Err(e) = companion_store::init_db(&real_conn) {
+                    error!("Failed to init companion_store DB: {e}");
+                }
+
+                *state.sqlite_conn.lock().unwrap() = real_conn;
+                *state.db_path.lock().unwrap() = db_path.clone();
+
                 if let Err(e) = activity_logger::init_db(&sqlite_path) {
                     error!("Failed to init activity_logger DB: {e}");
-                }
-                if let Err(e) = companion_store::init_db(&conn) {
-                    error!("Failed to init companion_store DB: {e}");
                 }
             }
 
@@ -111,15 +126,13 @@ pub fn run() {
 // ---------------------------------------------------------------------------
 
 fn build_app_state() -> AppState {
-    // We open the SQLite connection once here.  The path is determined
-    // again in setup; for the initial open we use an in-memory DB that
-    // gets replaced after setup.  The state's `db_path` is set to the
-    // real path during setup via the initialisation functions.
+    // Temporary in-memory placeholder; replaced with the real on-disk
+    // connection inside the setup hook once we have the AppHandle.
     let conn = rusqlite::Connection::open_in_memory()
         .expect("failed to open in-memory SQLite connection");
     AppState {
         sqlite_conn: Arc::new(Mutex::new(conn)),
-        db_path: PathBuf::new(),
+        db_path: Arc::new(Mutex::new(PathBuf::new())),
     }
 }
 

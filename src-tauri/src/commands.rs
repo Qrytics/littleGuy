@@ -12,8 +12,12 @@ use crate::companion_store::{self, Companion, Settings};
 // ---------------------------------------------------------------------------
 
 pub struct AppState {
+    /// SQLite connection used for companion_store and settings (write path).
+    /// Initialised to an in-memory DB at startup and replaced with the
+    /// real on-disk connection during the Tauri setup hook.
     pub sqlite_conn: Arc<Mutex<rusqlite::Connection>>,
-    pub db_path: PathBuf,
+    /// Base data directory; populated during setup.
+    pub db_path: Arc<Mutex<PathBuf>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -23,7 +27,7 @@ pub struct AppState {
 /// Return today's activity recap (uses DuckDB analytics path).
 #[tauri::command]
 pub async fn get_recap_data(state: State<'_, AppState>) -> Result<RecapData, String> {
-    let db_path = state.db_path.join("activity.db");
+    let db_path = state.db_path.lock().unwrap().join("activity.db");
     analytics::get_recap_data(&db_path).map_err(|e| e.to_string())
 }
 
