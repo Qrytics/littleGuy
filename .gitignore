@@ -1,7 +1,21 @@
+# Node / frontend
 node_modules/
 dist/
 out/
+
+# Rust / Tauri build artifacts
+src-tauri/target/
+src-tauri/WixTools/
+
+# Logs and temp files
 *.log
 .DS_Store
 Thumbs.db
+Thumbs.db:encryptable
+
+# App data
 userData/
+
+# Editor dirs
+.vscode/
+.idea/

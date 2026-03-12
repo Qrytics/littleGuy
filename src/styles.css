@@ -10,18 +10,23 @@ html, body {
   height: 160px;
   overflow: hidden;
   background: transparent;
-  /* Pixelated rendering so the scaled-up canvas looks crisp */
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
-#character {
+#root {
+  width: 80px;
+  height: 160px;
+  background: transparent;
+}
+
+canvas#character {
   display: block;
   cursor: grab;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
-#character:active {
+canvas#character:active {
   cursor: grabbing;
 }

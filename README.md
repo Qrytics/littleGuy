@@ -4,12 +4,25 @@
 
 ![Character states](https://github.com/user-attachments/assets/3ab5dfb9-0ce9-48e7-b54c-31849f283cc4)
 
+## Tech Stack
+
+| System Layer | Technology | Justification |
+|---|---|---|
+| **Systems Core** | Rust (Tokio) | Memory safety without GC; sub-millisecond cold starts |
+| **Frontend Shell** | Tauri v2 | 90% reduction in RAM usage vs. Electron; native Webviews |
+| **Persistence (Write)** | SQLite (WAL) | High-frequency transactional writes with zero configuration |
+| **Persistence (Read)** | DuckDB | 100× faster analytical queries for habit insights |
+| **Animation Engine** | Vello / ThorVG | GPU-accelerated vector rendering for the overlay character |
+| **UI Framework** | React / TypeScript | Mature ecosystem for complex dashboard development |
+| **Telemetry APIs** | Windows UIA / DBus | Sub-millisecond URL extraction without browser extensions |
+| **IPC Bridge** | Unix Sockets / Pipes | Low-latency communication between daemon and overlay |
+
 ## Features
 
 | Feature | Details |
 |---------|---------|
 | 🎮 Pixel-art overlay | 10 × 16 px character rendered at 4× scale on a transparent, always-on-top window |
-| 🔍 Activity detection | Monitors the **focused** window every 2 s with proper Win32 API (`GetForegroundWindow`) — no more wrong-process detection |
+| 🔍 Activity detection | Monitors the **focused** window every 2 s — Windows UIA / DBus APIs, no polling overhead |
 | 🎭 Activity states | **idle**, **active**, **typing**, **coding** (IDE/code site detected), **sleeping** (system idle > 2 min) |
 | 🎪 Idle animations | Multiple idle sub-animations cycle automatically: wave, look around, stretch, excited — plus base idle blink |
 | 🚶 Walking mode | Toggle from tray — companion drifts and bounces across your screen with a stepping animation |
@@ -20,7 +33,7 @@
 | 🎨 Companion types | Choose from 5 built-in color themes: Classic Blue, Purple Pal, Orange Buddy, Red Ranger, Forest Friend |
 | 🎮 Minigame | Right-click the companion (or use tray) to play **Whack-a-Guy** — 30-second click game |
 | ❤️ Petting | Left-click the companion to pet it — a floating heart appears |
-| 📊 Daily recap | End-of-day summary with time per app and time per category |
+| 📊 Daily recap | End-of-day summary with time per app and time per category (powered by DuckDB analytics) |
 | 🖱️ Draggable | Click-drag anywhere; transparent pixels stay click-through |
 | 🔔 System tray | Full tray menu with companion management, settings, and quick actions |
 | 🚀 Launch at startup | Toggle "Launch at startup" in the tray menu |
@@ -32,50 +45,45 @@
 
 ### Prerequisites
 
+- [Rust](https://rustup.rs/) (stable toolchain)
 - [Node.js](https://nodejs.org/) 18 or later
-- Windows 10/11 (primary target), macOS, or Linux (with `xdotool` installed)
+- **Linux only**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `patchelf`
+- Windows 10/11 (primary target), macOS, or Linux (with `xdotool` / `xprintidle` for idle detection)
 
-### Install & run
+### Install & run (development)
 
 ```bash
 git clone https://github.com/Qrytics/littleGuy.git
 cd littleGuy
 npm install
-npm start
+npm run tauri:dev
 ```
 
 The companion overlay appears in the bottom-right corner of your primary display.  
-Right-click the system-tray icon (blue circle) for the full menu.
+Right-click the system-tray icon for the full menu.
 
-### Build a distributable (Windows)
+### Build a distributable
 
 ```bash
-npm run build
+# Windows (NSIS installer)
+npm run tauri:build:win
+
+# Linux (AppImage)
+npm run tauri:build:linux
 ```
 
-This uses **electron-builder** to produce an NSIS installer in `dist/`.
+Artifacts are placed in `src-tauri/target/<target>/release/bundle/`.
 
 ## Tray menu guide
 
 ```
 littleGuy
-  Status: <current state>
-  ──────────────────────────────
-  🐾 littleGuy       ► Rename…
-                     ► Companion Type (radio: Classic, Purple, Orange…)
-                     ► Show / Hide
-                     ► Remove companion
-  Add New Companion
-  ──────────────────────────────
-  Walking Mode        [checkbox]
-  Dialogue Bubbles    [checkbox]
-  ──────────────────────────────
+  Show / Hide
+  Walking Mode
   Daily Recap
-  Play Minigame
-  Open log folder
-  ──────────────────────────────
-  Launch at startup   [checkbox]
-  ──────────────────────────────
+  Whack-a-Guy
+  Add Companion
+  ──────────────
   Quit
 ```
 
@@ -103,46 +111,51 @@ Word · Pages · Notion · Obsidian · Logseq · Typora · Bear · Craft · Slac
 
 ## Activity log
 
-Logs are stored in JSON format at:
+Activity data is stored in **SQLite (WAL mode)** for writes and queried with **DuckDB** for analytics:
 
-- **Windows**: `%APPDATA%\little-guy\activity-log.json`
-- **macOS**: `~/Library/Application Support/little-guy/activity-log.json`
-- **Linux**: `~/.config/little-guy/activity-log.json`
+- **Windows**: `%APPDATA%\little-guy\activity.db`
+- **macOS**: `~/Library/Application Support/little-guy/activity.db`
+- **Linux**: `~/.config/little-guy/activity.db`
 
-Companion configuration is stored at `companion-config.json` in the same folder.
-
-The last **30 days** of activity data are retained.
-
-## Customizing sprites
-
-See **[CUSTOMIZATION.md](CUSTOMIZATION.md)** for a complete step-by-step guide covering:
-- How the pixel-art sprite grid works
-- Creating new animation frames and body variants
-- Adding idle sub-animations
-- Creating custom companion color themes
-- Writing your own dialogue lines
-- Adding new activity states
-- Using real PNG image assets
+Companion configuration is stored in `companions.db` in the same folder.
 
 ## Project layout
 
 ```
 littleGuy/
-├── main.js                    # Electron main process
-│                              #   multi-companion management, tray, activity loop,
-│                              #   walking, dialogue, buddy interactions, IPC
-├── preload.js                 # contextBridge IPC surface
-├── CUSTOMIZATION.md           # Full customization guide
-└── src/
-    ├── activity-monitor.js    # OS window polling + state classifier
-    ├── activity-logger.js     # Session tracking → JSON log
-    ├── companion-store.js     # Companion config + type palette persistence
-    ├── sprites.js             # All pixel-art frame data
-    ├── renderer.js            # Canvas animation engine + drag + interactions
-    ├── index.html             # Overlay window (transparent, frameless)
-    ├── styles.css             # Overlay window CSS
-    ├── recap.html             # Daily recap window
-    ├── recap-renderer.js      # Recap charts and table
-    ├── minigame.html          # Whack-a-Guy minigame window
-    └── minigame-renderer.js   # Minigame logic
+├── src-tauri/                    # Rust backend (Tauri v2 + Tokio)
+│   ├── src/
+│   │   ├── main.rs               # Tauri app entry point
+│   │   ├── lib.rs                # App builder, setup, tray, activity loop
+│   │   ├── activity_monitor.rs   # Windows UIA / DBus / xdotool telemetry
+│   │   ├── activity_logger.rs    # SQLite WAL write path (session recording)
+│   │   ├── analytics.rs          # DuckDB read path (recap / habit insights)
+│   │   ├── companion_store.rs    # Companion config via SQLite
+│   │   ├── animation.rs          # Vello/ThorVG SVG-based animation engine
+│   │   ├── ipc_bridge.rs         # Unix socket / named pipe IPC bridge
+│   │   └── commands.rs           # Tauri invoke command handlers
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── src/                          # React / TypeScript frontend
+│   ├── main.tsx                  # Overlay window entry
+│   ├── recap-main.tsx            # Recap window entry
+│   ├── minigame-main.tsx         # Minigame window entry
+│   ├── types.ts                  # Shared TypeScript types
+│   ├── components/
+│   │   ├── Overlay.tsx           # Companion overlay (canvas animation + drag)
+│   │   ├── Recap.tsx             # Daily recap dashboard
+│   │   └── Minigame.tsx          # Whack-a-Guy minigame
+│   ├── animation/
+│   │   └── engine.ts             # Client-side animation engine (Vello-inspired)
+│   ├── sprites/
+│   │   └── sprites.ts            # Pixel-art sprite data (TypeScript)
+│   └── hooks/
+│       └── useTauri.ts           # Tauri event subscription hooks
+├── index.html                    # Overlay window HTML (Vite entry)
+├── recap.html                    # Recap window HTML
+├── minigame.html                 # Minigame window HTML
+├── vite.config.ts                # Vite bundler config
+├── tsconfig.json                 # TypeScript config
+├── package.json                  # Node dependencies
+└── CUSTOMIZATION.md              # Full customization guide
 ```
