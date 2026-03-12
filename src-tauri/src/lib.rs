@@ -66,12 +66,11 @@ pub fn run() {
 
                 // Open the real on-disk connection and replace the temporary
                 // in-memory placeholder created before the AppHandle existed.
-                let real_conn = rusqlite::Connection::open(&companion_path)
-                    .expect("open companion DB");
+                let real_conn = rusqlite::Connection::open(&companion_path).unwrap_or_else(|e| {
+                    panic!("open companion DB at {}: {e}", companion_path.display())
+                });
                 real_conn
-                    .execute_batch(
-                        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
-                    )
+                    .execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
                     .expect("companion DB WAL mode");
 
                 if let Err(e) = companion_store::init_db(&real_conn) {
@@ -128,8 +127,8 @@ pub fn run() {
 fn build_app_state() -> AppState {
     // Temporary in-memory placeholder; replaced with the real on-disk
     // connection inside the setup hook once we have the AppHandle.
-    let conn = rusqlite::Connection::open_in_memory()
-        .expect("failed to open in-memory SQLite connection");
+    let conn =
+        rusqlite::Connection::open_in_memory().expect("failed to open in-memory SQLite connection");
     AppState {
         sqlite_conn: Arc::new(Mutex::new(conn)),
         db_path: Arc::new(Mutex::new(PathBuf::new())),

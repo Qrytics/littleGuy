@@ -201,7 +201,7 @@ pub fn get_by_id(conn: &Connection, id: &str) -> Result<Option<Companion>> {
         })
         .context("query companion by id")?;
 
-    Ok(rows.next().transpose().context("fetch companion by id")?)
+    rows.next().transpose().context("fetch companion by id")
 }
 
 pub fn add(conn: &Connection) -> Result<Companion> {
@@ -280,30 +280,20 @@ pub fn update(
 
 pub fn get_settings(conn: &Connection) -> Result<Settings> {
     let get = |key: &str| -> Option<String> {
-        conn.query_row(
-            "SELECT value FROM settings WHERE key = ?1",
-            [key],
-            |r| r.get(0),
-        )
+        conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| {
+            r.get(0)
+        })
         .ok()
     };
 
     Ok(Settings {
-        autostart: get("autostart")
-            .map(|v| v == "true")
-            .unwrap_or(false),
-        walking_mode: get("walking_mode")
-            .map(|v| v == "true")
-            .unwrap_or(false),
+        autostart: get("autostart").map(|v| v == "true").unwrap_or(false),
+        walking_mode: get("walking_mode").map(|v| v == "true").unwrap_or(false),
         idle_threshold_secs: get("idle_threshold_secs")
             .and_then(|v| v.parse().ok())
             .unwrap_or(120),
-        show_dialogue: get("show_dialogue")
-            .map(|v| v == "true")
-            .unwrap_or(true),
-        buddy_mode: get("buddy_mode")
-            .map(|v| v == "true")
-            .unwrap_or(false),
+        show_dialogue: get("show_dialogue").map(|v| v == "true").unwrap_or(true),
+        buddy_mode: get("buddy_mode").map(|v| v == "true").unwrap_or(false),
     })
 }
 

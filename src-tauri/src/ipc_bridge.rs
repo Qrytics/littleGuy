@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::{error, info, warn};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::Mutex;
@@ -99,10 +99,14 @@ where
                 buf.extend_from_slice(&tmp[..n]);
                 while let Some(pos) = buf.iter().position(|&b| b == b'\n') {
                     let line = buf.drain(..=pos).collect::<Vec<u8>>();
-                    if let Ok(msg) =
-                        serde_json::from_slice::<IpcMessage>(&line[..line.len() - 1])
-                    {
-                        dispatch_to_tauri(&app, &msg);
+                    // `line` always ends with the '\n' delimiter found above.
+                    // Strip it before deserialising; guard against empty slice.
+                    if line.len() > 1 {
+                        if let Ok(msg) =
+                            serde_json::from_slice::<IpcMessage>(&line[..line.len() - 1])
+                        {
+                            dispatch_to_tauri(&app, &msg);
+                        }
                     }
                 }
             }
@@ -118,11 +122,22 @@ where
 pub async fn start_ipc_server(app_handle: AppHandle) -> Result<()> {
     use tokio::net::UnixListener;
 
-    const SOCKET_PATH: &str = "/tmp/littleguy.sock";
+    // Use XDG_RUNTIME_DIR when available (Linux), falling back to the app
+    // data directory.  Avoid /tmp to prevent other users on the same host
+    // from connecting to our socket.
+    let socket_dir = std::env::var("XDG_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            app_handle
+                .path()
+                .app_data_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."))
+        });
+    let socket_path = socket_dir.join("littleguy.sock");
 
-    let _ = tokio::fs::remove_file(SOCKET_PATH).await;
-    let listener = UnixListener::bind(SOCKET_PATH)?;
-    info!("IPC Unix socket listening at {SOCKET_PATH}");
+    let _ = tokio::fs::remove_file(&socket_path).await;
+    let listener = UnixListener::bind(&socket_path)?;
+    info!("IPC Unix socket listening at {}", socket_path.display());
 
     loop {
         match listener.accept().await {

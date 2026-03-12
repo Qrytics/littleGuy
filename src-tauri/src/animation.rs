@@ -70,8 +70,7 @@ pub fn get_frames(state: &str, colors: &CompanionColors) -> Vec<AnimationFrame> 
 
 /// Render a single SVG frame for (`state`, `frame_index`).
 pub fn render_frame_svg(state: &str, frame_index: usize, colors: &CompanionColors) -> String {
-    let (left_arm, right_arm, body_dy, eye_shape, mouth_shape) =
-        pose_for_frame(state, frame_index);
+    let (left_arm, right_arm, body_dy, eye_shape, mouth_shape) = pose_for_frame(state, frame_index);
 
     build_svg(colors, left_arm, right_arm, body_dy, eye_shape, mouth_shape)
 }
@@ -129,7 +128,7 @@ fn pose_for_frame(
     let fi = frame_index % frame_count_for_state(state);
     match state {
         "idle" => {
-            let dy = if fi % 2 == 0 { 0.0 } else { -2.0 };
+            let dy = if fi.is_multiple_of(2) { 0.0 } else { -2.0 };
             ("rotate(10,10,4)", "rotate(-10,4,4)", dy, "open", "smile")
         }
         "idle_wave" => {
@@ -170,14 +169,8 @@ fn pose_for_frame(
             (ARMS[fi].0, ARMS[fi].1, 0.0, "side", "smile")
         }
         "idle_excited" => {
-            let dy = if fi % 2 == 0 { -4.0 } else { 0.0 };
-            (
-                "rotate(-70,10,4)",
-                "rotate(70,4,4)",
-                dy,
-                "open",
-                "grin",
-            )
+            let dy = if fi.is_multiple_of(2) { -4.0 } else { 0.0 };
+            ("rotate(-70,10,4)", "rotate(70,4,4)", dy, "open", "grin")
         }
         "active" => (
             "rotate(-20,10,4)",
@@ -280,12 +273,7 @@ fn build_svg(
         eye_shape,
         &c.hair,
     );
-    let mouth = render_mouth(
-        head_x + head_w / 2.0,
-        head_y + 22.0,
-        mouth_shape,
-        &c.hair,
-    );
+    let mouth = render_mouth(head_x + head_w / 2.0, head_y + 22.0, mouth_shape, &c.hair);
 
     format!(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="80" height="160" viewBox="0 0 80 160">
@@ -361,34 +349,50 @@ fn render_eyes(lx: f32, ly: f32, variant: &str, color: &str) -> String {
         "closed" => format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{color}" stroke-width="2" stroke-linecap="round"/>
                <line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{color}" stroke-width="2" stroke-linecap="round"/>"#,
-            lx, ly, lx + 6.0, ly,
-            rx, ly, rx + 6.0, ly,
+            lx,
+            ly,
+            lx + 6.0,
+            ly,
+            rx,
+            ly,
+            rx + 6.0,
+            ly,
         ),
         "squint" => format!(
             r#"<ellipse cx="{}" cy="{}" rx="3" ry="2" fill="{color}"/>
                <ellipse cx="{}" cy="{}" rx="3" ry="2" fill="{color}"/>"#,
-            lx + 3.0, ly + 1.0,
-            rx + 3.0, ly + 1.0,
+            lx + 3.0,
+            ly + 1.0,
+            rx + 3.0,
+            ly + 1.0,
         ),
         "side" => format!(
             r#"<ellipse cx="{}" cy="{}" rx="4" ry="4" fill="{color}"/>
                <ellipse cx="{}" cy="{}" rx="4" ry="4" fill="{color}"/>
                <ellipse cx="{}" cy="{}" rx="2" ry="2" fill="white"/>
                <ellipse cx="{}" cy="{}" rx="2" ry="2" fill="white"/>"#,
-            lx + 3.0, ly + 2.0,
-            rx + 3.0, ly + 2.0,
-            lx + 5.0, ly + 2.0,
-            rx + 5.0, ly + 2.0,
+            lx + 3.0,
+            ly + 2.0,
+            rx + 3.0,
+            ly + 2.0,
+            lx + 5.0,
+            ly + 2.0,
+            rx + 5.0,
+            ly + 2.0,
         ),
         "focused" => format!(
             r#"<ellipse cx="{}" cy="{}" rx="4" ry="3" fill="{color}"/>
                <ellipse cx="{}" cy="{}" rx="4" ry="3" fill="{color}"/>
                <ellipse cx="{}" cy="{}" rx="1.5" ry="1.5" fill="white"/>
                <ellipse cx="{}" cy="{}" rx="1.5" ry="1.5" fill="white"/>"#,
-            lx + 3.0, ly + 1.5,
-            rx + 3.0, ly + 1.5,
-            lx + 3.0, ly + 1.5,
-            rx + 3.0, ly + 1.5,
+            lx + 3.0,
+            ly + 1.5,
+            rx + 3.0,
+            ly + 1.5,
+            lx + 3.0,
+            ly + 1.5,
+            rx + 3.0,
+            ly + 1.5,
         ),
         _ => {
             // "open" default
@@ -415,25 +419,37 @@ fn render_mouth(cx: f32, y: f32, variant: &str, color: &str) -> String {
     match variant {
         "open" => format!(
             r#"<path d="M {} {} Q {} {} {} {}" stroke="{color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>"#,
-            cx - 5.0, y,
-            cx, y + 3.0,
-            cx + 5.0, y,
+            cx - 5.0,
+            y,
+            cx,
+            y + 3.0,
+            cx + 5.0,
+            y,
         ),
         "grin" => format!(
             r#"<path d="M {} {} Q {} {} {} {}" stroke="{color}" stroke-width="2" fill="none" stroke-linecap="round"/>
                <path d="M {} {} Q {} {} {} {}" stroke="none" fill="{color}" opacity="0.15"/>"#,
-            cx - 7.0, y,
-            cx, y + 6.0,
-            cx + 7.0, y,
-            cx - 7.0, y,
-            cx, y + 6.0,
-            cx + 7.0, y,
+            cx - 7.0,
+            y,
+            cx,
+            y + 6.0,
+            cx + 7.0,
+            y,
+            cx - 7.0,
+            y,
+            cx,
+            y + 6.0,
+            cx + 7.0,
+            y,
         ),
         "smile" => format!(
             r#"<path d="M {} {} Q {} {} {} {}" stroke="{color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>"#,
-            cx - 5.0, y,
-            cx, y + 4.0,
-            cx + 5.0, y,
+            cx - 5.0,
+            y,
+            cx,
+            y + 4.0,
+            cx + 5.0,
+            y,
         ),
         _ => format!(
             r#"<line x1="{}" y1="{y}" x2="{}" y2="{y}" stroke="{color}" stroke-width="1.5" stroke-linecap="round"/>"#,

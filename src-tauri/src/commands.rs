@@ -47,10 +47,7 @@ pub async fn add_companion(state: State<'_, AppState>) -> Result<Companion, Stri
 
 /// Remove a companion by ID.
 #[tauri::command]
-pub async fn remove_companion(
-    id: String,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn remove_companion(id: String, state: State<'_, AppState>) -> Result<(), String> {
     let conn = state.sqlite_conn.lock().unwrap();
     companion_store::remove(&conn, &id).map_err(|e| e.to_string())
 }
@@ -66,15 +63,8 @@ pub async fn update_companion(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let conn = state.sqlite_conn.lock().unwrap();
-    companion_store::update(
-        &conn,
-        &id,
-        name.as_deref(),
-        companion_type.as_deref(),
-        x,
-        y,
-    )
-    .map_err(|e| e.to_string())
+    companion_store::update(&conn, &id, name.as_deref(), companion_type.as_deref(), x, y)
+        .map_err(|e| e.to_string())
 }
 
 /// Return the current application settings.
@@ -106,5 +96,9 @@ pub async fn get_animation_frame(
     _state: State<'_, AppState>,
 ) -> Result<String, String> {
     let colors = CompanionColors::from_type(&companion_type);
-    Ok(animation::render_frame_svg(&anim_state, frame_index, &colors))
+    Ok(animation::render_frame_svg(
+        &anim_state,
+        frame_index,
+        &colors,
+    ))
 }

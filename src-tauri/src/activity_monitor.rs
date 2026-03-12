@@ -4,19 +4,10 @@ use anyhow::Result;
 // Public types
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct WindowInfo {
     pub process_name: String,
     pub window_title: String,
-}
-
-impl Default for WindowInfo {
-    fn default() -> Self {
-        WindowInfo {
-            process_name: String::new(),
-            window_title: String::new(),
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +217,7 @@ pub async fn get_active_window() -> WindowInfo {
 
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
-        if hwnd.0 == std::ptr::null_mut() {
+        if hwnd.0.is_null() {
             return WindowInfo::default();
         }
 
@@ -491,10 +482,7 @@ pub fn classify_activity(
 
     // Browser with coding-related title
     if is_browser_process(&proc) {
-        if CODING_TITLE_KEYWORDS
-            .iter()
-            .any(|kw| title.contains(kw))
-        {
+        if CODING_TITLE_KEYWORDS.iter().any(|kw| title.contains(kw)) {
             return "coding";
         }
         // Reading / watching — treat as active
@@ -513,7 +501,9 @@ pub fn classify_activity(
 }
 
 fn is_ide_process(proc: &str) -> bool {
-    IDE_PROCESSES.iter().any(|p| proc == *p || proc.starts_with(p))
+    IDE_PROCESSES
+        .iter()
+        .any(|p| proc == *p || proc.starts_with(p))
 }
 
 fn is_browser_process(proc: &str) -> bool {
